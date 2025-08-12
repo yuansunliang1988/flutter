@@ -35,15 +35,20 @@ jobs:
       - name: Setup Visual Studio
         uses: microsoft/setup-msbuild@v1.1
 
-      # 5. 安装 Flutter 依赖（如 Dart SDK）
-      - name: Install Flutter Dependencies
-        run: |
-          # 安装 Dart SDK
-          curl -L https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/x64/dart-sdk.zip -o dart-sdk.zip
-          Expand-Archive dart-sdk.zip dart-sdk
-          $env:PATH = "$env:PATH;$(Get-Location)\dart-sdk\bin"
+      # 5. 安装 Dart SDK
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
 
-      # 6. 配置 Git 全局设置
+      # 6. 安装 Flutter
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+          channel: 'stable'
+
+      # 7. 配置 Git 全局设置
       - name: Configure Git
         run: |
           git config --global core.autocrlf false
@@ -51,22 +56,22 @@ jobs:
           git config --global core.fscache true
           git config --global core.preloadindex true
 
-      # 7. 同步 Flutter 引擎代码
+      # 8. 同步 Flutter 引擎代码
       - name: Sync Flutter Engine
         run: |
           gclient sync --nohooks
 
-      # 8. 生成构建配置（GN）
+      # 9. 生成构建配置（GN）
       - name: Generate GN Build Files
         run: |
           gn gen out/host_debug --args="target_cpu=\"x64\" is_debug=true"
 
-      # 9. 编译 Flutter Windows 引擎
+      # 10. 编译 Flutter Windows 引擎
       - name: Build Flutter Windows Engine
         run: |
           ninja -C out/host_debug
 
-      # 10. 上传构建产物（flutter_windows.dll）
+      # 11. 上传构建产物（flutter_windows.dll）
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
