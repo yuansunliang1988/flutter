@@ -70,13 +70,64 @@ jobs:
         with:
           channel: 'stable'
 
-      # 10. 配置 Git 全局设置
-      - name: Configure Git
-        run: |
-          git config --global core.autocrlf false
-          git config --global core.filemode false
-          git config --global core.fscache true
-          git config --global core.preloadindex true
+             # 10. 配置 Git 全局设置
+       - name: Configure Git
+         run: |
+           git config --global core.autocrlf false
+           git config --global core.filemode false
+           git config --global core.fscache true
+           git config --global core.preloadindex true
+           
+               # 10.5. 验证代码完整性
+        - name: Verify Code Integrity
+          run: |
+            Write-Host "=== 验证代码完整性 ==="
+            
+            # 检查当前提交
+            Write-Host "当前提交:"
+            git log --oneline -1
+            
+            # 检查工作目录状态
+            Write-Host "工作目录状态:"
+            git status --porcelain
+            
+            # 验证子模块
+            Write-Host "子模块状态:"
+            git submodule status
+            
+            # 检查关键文件是否存在
+            Write-Host "检查关键文件:"
+            $criticalFiles = @(
+              "engine/README.md",
+              "engine/.gclient"
+            )
+            
+            $missingFiles = @()
+            foreach ($file in $criticalFiles) {
+              if (Test-Path $file) {
+                Write-Host "? $file 存在"
+              } else {
+                Write-Host "? $file 缺失"
+                $missingFiles += $file
+              }
+            }
+            
+            # 验证engine目录结构
+            Write-Host "Engine目录结构验证:"
+            if (Test-Path "engine") {
+              Get-ChildItem engine | ForEach-Object { Write-Host "  - $($_.Name)" }
+            } else {
+              Write-Host "? engine目录不存在"
+              $missingFiles += "engine目录"
+            }
+            
+            # 如果有缺失文件，输出警告但不退出
+            if ($missingFiles.Count -gt 0) {
+              Write-Host "??  发现缺失文件，将在后续步骤中尝试修复:"
+              $missingFiles | ForEach-Object { Write-Host "  - $_" }
+            } else {
+              Write-Host "? 所有关键文件都存在"
+            }
 
       # 11. 同步 Flutter 引擎代码
       - name: Sync Flutter Engine
@@ -85,46 +136,162 @@ jobs:
           cd engine
           gclient config https://github.com/flutter/flutter.git
           gclient sync --nohooks
+          
+             # 11.5. 强制同步（确保buildtools下载）
+       - name: Force Sync Buildtools
+         run: |
+           cd engine
+           gclient sync --nohooks --force
+           
+               # 11.6. 验证同步结果
+        - name: Verify Sync Results
+          run: |
+            cd engine
+            Write-Host "=== 验证同步结果 ==="
+            
+            # 检查.gclient_entries文件
+            if (Test-Path ".gclient_entries") {
+              Write-Host "? .gclient_entries 存在"
+              Get-Content ".gclient_entries" | Select-Object -First 5
+            } else {
+              Write-Host "? .gclient_entries 缺失"
+              Write-Host "??  尝试重新同步..."
+              gclient sync --nohooks --force
+            }
+            
+            # 验证flutter目录完整性
+            if (Test-Path "flutter") {
+              Write-Host "? flutter目录存在"
+              
+              # 检查buildtools
+              if (Test-Path "flutter\buildtools") {
+                Write-Host "? buildtools目录存在"
+                Get-ChildItem "flutter\buildtools" -Recurse | Select-Object -First 10
+              } else {
+                Write-Host "? buildtools目录缺失"
+                Write-Host "??  尝试重新同步buildtools..."
+                gclient sync --nohooks --force
+              }
+            } else {
+              Write-Host "? flutter目录缺失"
+              Write-Host "??  尝试重新同步..."
+              gclient sync --nohooks --force
+            }
+            
+            # 检查关键源文件
+            $sourceFiles = @(
+              "src\flutter\shell\platform\windows\flutter_windows_engine.cc",
+              "src\flutter\shell\platform\windows\egl\manager.cc",
+              "src\flutter\shell\platform\windows\egl\manager.h"
+            )
+            
+            $missingSourceFiles = @()
+            foreach ($file in $sourceFiles) {
+              if (Test-Path $file) {
+                Write-Host "? $file 存在"
+              } else {
+                Write-Host "? $file 缺失"
+                $missingSourceFiles += $file
+              }
+            }
+            
+            # 如果有缺失的源文件，输出警告但不退出
+            if ($missingSourceFiles.Count -gt 0) {
+              Write-Host "??  发现缺失的源文件:"
+              $missingSourceFiles | ForEach-Object { Write-Host "  - $_" }
+              Write-Host "这些文件可能在后续构建步骤中生成"
+            }
 
       # 12. 检查目录结构
       - name: Check directory structure
         run: |
           cd engine
+          Write-Host "=== Engine directory contents ==="
           Get-ChildItem
-          if (Test-Path "flutter\buildtools") { 
-            Write-Host "flutter\buildtools directory exists:"
-            Get-ChildItem flutter\buildtools
+          
+          Write-Host "=== Flutter directory contents ==="
+          if (Test-Path "flutter") {
+            Get-ChildItem flutter
+          } else {
+            Write-Host "flutter directory not found"
           }
-          if (Test-Path "flutter\buildtools\win") { 
-            Write-Host "flutter\buildtools\win directory exists:"
-            Get-ChildItem flutter\buildtools\win
-          }
+          
+          Write-Host "=== Search for buildtools ==="
+          Get-ChildItem -Recurse -Directory -Name "buildtools" | Select-Object -First 10
+          
+          Write-Host "=== Search for gn.exe ==="
+          Get-ChildItem -Recurse -File -Name "gn.exe" | Select-Object -First 10
+          
+          Write-Host "=== Search for ninja.exe ==="
+          Get-ChildItem -Recurse -File -Name "ninja.exe" | Select-Object -First 10
 
       # 13. 生成构建配置（GN）
       - name: Generate GN Build Files
         run: |
           cd engine
+          
+          # 尝试找到gn.exe
+          $gnPath = $null
           if (Test-Path "flutter\buildtools\win\gn.exe") {
-            .\flutter\buildtools\win\gn.exe gen out\host_release --args="target_cpu=\"x64\" is_debug=false is_official_build=true is_component_build=false enable_impeller=true"
+            $gnPath = ".\flutter\buildtools\win\gn.exe"
           } else {
-            Write-Host "gn.exe not found in flutter\buildtools\win\"
-            Write-Host "Trying to find gn.exe..."
-            Get-ChildItem -Recurse -Name "gn.exe" | Select-Object -First 5
-            exit 1
+            $gnFiles = Get-ChildItem -Recurse -File -Name "gn.exe" | Select-Object -First 1
+            if ($gnFiles) {
+              $gnPath = $gnFiles
+            }
           }
+          
+                     if ($gnPath) {
+             Write-Host "Using gn at: $gnPath"
+             & $gnPath gen out\host_release --args="target_cpu=\"x64\" is_debug=false is_official_build=true is_component_build=false enable_impeller=true"
+           } else {
+             Write-Host "gn.exe not found anywhere in the engine directory"
+             Write-Host "??  尝试重新同步以获取buildtools..."
+             gclient sync --nohooks --force
+             
+             # 再次尝试查找gn.exe
+             if (Test-Path "flutter\buildtools\win\gn.exe") {
+               Write-Host "? 重新同步后找到gn.exe"
+               & ".\flutter\buildtools\win\gn.exe" gen out\host_release --args="target_cpu=\"x64\" is_debug=false is_official_build=true is_component_build=false enable_impeller=true"
+             } else {
+               Write-Host "? 重新同步后仍未找到gn.exe"
+               exit 1
+             }
+           }
 
       # 14. 编译 Flutter Windows 引擎
       - name: Build Flutter Windows Engine
         run: |
           cd engine
+          
+          # 尝试找到ninja.exe
+          $ninjaPath = $null
           if (Test-Path "flutter\buildtools\win\ninja.exe") {
-            .\flutter\buildtools\win\ninja.exe -C out\host_release
+            $ninjaPath = ".\flutter\buildtools\win\ninja.exe"
           } else {
-            Write-Host "ninja.exe not found in flutter\buildtools\win\"
-            Write-Host "Trying to find ninja.exe..."
-            Get-ChildItem -Recurse -Name "ninja.exe" | Select-Object -First 5
-            exit 1
+            $ninjaFiles = Get-ChildItem -Recurse -File -Name "ninja.exe" | Select-Object -First 1
+            if ($ninjaFiles) {
+              $ninjaPath = $ninjaFiles
+            }
           }
+          
+                     if ($ninjaPath) {
+             Write-Host "Using ninja at: $ninjaPath"
+             & $ninjaPath -C out\host_release
+           } else {
+             Write-Host "ninja.exe not found anywhere in the engine directory"
+             Write-Host "??  尝试重新同步以获取buildtools..."
+             gclient sync --nohooks --force
+             
+             # 再次尝试查找ninja.exe
+             if (Test-Path "flutter\buildtools\win\ninja.exe") {
+               Write-Host "? 重新同步后找到ninja.exe"
+               & ".\flutter\buildtools\win\ninja.exe" -C out\host_release
+             } else {
+               Write-Host "? 重新同步后仍未找到ninja.exe"
+               exit 1
+             }
+           }
 
       # 15. 上传构建产物（flutter_engine.dll, lib, pdb）
       - name: Upload Artifacts
