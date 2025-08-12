@@ -25,29 +25,52 @@ jobs:
         with:
           python-version: '3.x'
 
-      # 3. 安装 depot_tools（Flutter 构建依赖）
+      # 3. 缓存 depot_tools
+      - name: Cache depot_tools
+        id: cache-depot_tools
+        uses: actions/cache@v4
+        with:
+          path: depot_tools
+          key: depot_tools-${{ runner.os }}
+
+      # 4. 安装 depot_tools（Flutter 构建依赖）
       - name: Install depot_tools
+        if: steps.cache-depot_tools.outputs.cache-hit != 'true'
         run: |
           git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
-          echo "$(Get-Location)\depot_tools" >> $env:GITHUB_PATH
+        env:
+          DEPOT_TOOLS_PATH: ${{ github.workspace }}/depot_tools
 
-      # 4. 使用 GitHub Actions 预装的 Visual Studio（推荐）
+      # 5. 设置 depot_tools PATH
+      - name: Setup depot_tools PATH
+        run: |
+          echo "${{ github.workspace }}/depot_tools" >> $env:GITHUB_PATH
+
+      # 6. 缓存 Flutter engine
+      - name: Cache Flutter engine
+        id: cache-flutter-engine
+        uses: actions/cache@v4
+        with:
+          path: engine
+          key: flutter-engine-${{ runner.os }}-${{ hashFiles('**/DEPS') }}
+
+      # 7. 使用 GitHub Actions 预装的 Visual Studio（推荐）
       - name: Setup Visual Studio
         uses: microsoft/setup-msbuild@v1.1
 
-      # 5. 安装 Dart SDK
+      # 8. 安装 Dart SDK
       - name: Setup Dart
         uses: dart-lang/setup-dart@v1
         with:
           sdk: stable
 
-      # 6. 安装 Flutter
+      # 9. 安装 Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
 
-      # 7. 配置 Git 全局设置
+      # 10. 配置 Git 全局设置
       - name: Configure Git
         run: |
           git config --global core.autocrlf false
@@ -55,26 +78,49 @@ jobs:
           git config --global core.fscache true
           git config --global core.preloadindex true
 
-      # 8. 同步 Flutter 引擎代码
+      # 11. 同步 Flutter 引擎代码
       - name: Sync Flutter Engine
+        if: steps.cache-flutter-engine.outputs.cache-hit != 'true'
         run: |
           cd engine
           gclient config https://github.com/flutter/flutter.git
           gclient sync --nohooks
 
-      # 9. 生成构建配置（GN）
+      # 12. 检查目录结构
+      - name: Check directory structure
+        run: |
+          cd engine
+          ls -la
+          if (Test-Path "buildtools") { ls -la buildtools }
+          if (Test-Path "buildtools\win") { ls -la buildtools\win }
+
+      # 13. 生成构建配置（GN）
       - name: Generate GN Build Files
         run: |
           cd engine
-          .\buildtools\win\gn.exe gen out\host_release --args="target_cpu=\"x64\" is_debug=false is_official_build=true is_component_build=false enable_impeller=true"
+          if (Test-Path "buildtools\win\gn.exe") {
+            .\buildtools\win\gn.exe gen out\host_release --args="target_cpu=\"x64\" is_debug=false is_official_build=true is_component_build=false enable_impeller=true"
+          } else {
+            Write-Host "gn.exe not found in buildtools\win\"
+            Write-Host "Trying to find gn.exe..."
+            Get-ChildItem -Recurse -Name "gn.exe" | Select-Object -First 5
+            exit 1
+          }
 
-      # 10. 编译 Flutter Windows 引擎
+      # 14. 编译 Flutter Windows 引擎
       - name: Build Flutter Windows Engine
         run: |
           cd engine
-          .\buildtools\win\ninja.exe -C out\host_release
+          if (Test-Path "buildtools\win\ninja.exe") {
+            .\buildtools\win\ninja.exe -C out\host_release
+          } else {
+            Write-Host "ninja.exe not found in buildtools\win\"
+            Write-Host "Trying to find ninja.exe..."
+            Get-ChildItem -Recurse -Name "ninja.exe" | Select-Object -First 5
+            exit 1
+          }
 
-      # 11. 上传构建产物（flutter_engine.dll, lib, pdb）
+      # 15. 上传构建产物（flutter_engine.dll, lib, pdb）
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
