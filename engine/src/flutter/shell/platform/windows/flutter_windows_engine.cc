@@ -670,8 +670,13 @@ std::chrono::nanoseconds FlutterWindowsEngine::FrameInterval() {
   if (frame_interval_override_.has_value()) {
     return frame_interval_override_.value();
   }
-  uint64_t interval = 16600000;
-
+  
+  // 强制使用30fps的固定帧率，不依赖vsync
+  // 30fps = 1/30 秒 = 33.333... 毫秒 = 33,333,333 纳秒
+  uint64_t interval = 33333333;  // 30fps的纳秒间隔
+  
+  // 注释掉DWM vsync检测代码，使用固定帧率
+  /*
   DWM_TIMING_INFO timing_info = {};
   timing_info.cbSize = sizeof(timing_info);
   HRESULT result = DwmGetCompositionTimingInfo(NULL, &timing_info);
@@ -681,6 +686,7 @@ std::chrono::nanoseconds FlutterWindowsEngine::FrameInterval() {
                                    1000000000.0) /
                static_cast<double>(timing_info.rateRefresh.uiNumerator);
   }
+  */
 
   return std::chrono::nanoseconds(interval);
 }

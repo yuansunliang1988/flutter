@@ -32,6 +32,7 @@ namespace egl {
 enum class GpuPreference {
   NoPreference,
   LowPowerPreference,
+  HighPerformancePreference,  // 新增：高性能GPU偏好（独显）
 };
 
 // A manager for initializing ANGLE correctly and using it to create and

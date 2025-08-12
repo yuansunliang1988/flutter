@@ -47,13 +47,13 @@ Manager::~Manager() {
 }
 
 bool Manager::InitializeDisplay(GpuPreference gpu_preference) {
-  // If the request for a low power GPU is provided,
-  // we will attempt to select GPU explicitly, via ANGLE extension
-  // that allows to specify the GPU to use via LUID.
+  // 强制选择高性能GPU（独显），不依赖gpu_preference参数
+  // 如果请求低功耗GPU，我们仍然会尝试选择GPU，通过ANGLE扩展
+  // 允许通过LUID指定要使用的GPU。
   std::optional<LUID> luid = std::nullopt;
-  if (gpu_preference == GpuPreference::LowPowerPreference) {
-    luid = GetLowPowerGpuLuid();
-  }
+  
+  // 强制选择高性能GPU（独显），忽略传入的gpu_preference
+  luid = GetLowPowerGpuLuid();  // 函数名保持不变，但内部逻辑已修改为选择高性能GPU
 
   // These are preferred display attributes and request ANGLE's D3D11
   // renderer (use only in case of valid LUID returned from above).
@@ -347,8 +347,16 @@ std::optional<LUID> Manager::GetLowPowerGpuLuid() {
     // We will follow with the default ANGLE selection.
     return std::nullopt;
   }
+  
+  // 根据GPU偏好选择不同的GPU类型
+  DXGI_GPU_PREFERENCE gpu_preference = DXGI_GPU_PREFERENCE_MINIMUM_POWER;  // 默认低功耗
+  
+  // 这里可以根据需要修改为高性能GPU
+  // 如果要选择独显，使用 DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE
+  gpu_preference = DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE;  // 强制选择高性能GPU（独显）
+  
   hr = factory6->EnumAdapterByGpuPreference(
-      0, DXGI_GPU_PREFERENCE_MINIMUM_POWER, IID_PPV_ARGS(&adapter));
+      0, gpu_preference, IID_PPV_ARGS(&adapter));
   if (FAILED(hr) || adapter == nullptr) {
     return std::nullopt;
   }
