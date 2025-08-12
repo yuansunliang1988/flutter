@@ -244,29 +244,12 @@ jobs:
             exit 1
           }
           
-          Write-Host "=== Search for buildtools ==="
+          Write-Host "=== Buildtools status ==="
           if (Test-Path "flutter\buildtools") {
-            Write-Host "? buildtools found at: flutter\buildtools"
+            Write-Host "? buildtools directory exists"
             Get-ChildItem "flutter\buildtools" -Recurse | Select-Object -First 10
           } else {
-            Write-Host "? buildtools not found in flutter\buildtools"
-            Get-ChildItem -Recurse -Directory -Name "buildtools" | Select-Object -First 10
-          }
-          
-          Write-Host "=== Search for gn.exe ==="
-          if (Test-Path "flutter\buildtools\win\gn.exe") {
-            Write-Host "? gn.exe found at: flutter\buildtools\win\gn.exe"
-          } else {
-            Write-Host "? gn.exe not found in flutter\buildtools\win\"
-            Get-ChildItem -Recurse -File -Name "gn.exe" | Select-Object -First 10
-          }
-          
-          Write-Host "=== Search for ninja.exe ==="
-          if (Test-Path "flutter\buildtools\win\ninja.exe") {
-            Write-Host "? ninja.exe found at: flutter\buildtools\win\ninja.exe"
-          } else {
-            Write-Host "? ninja.exe not found in flutter\buildtools\win\"
-            Get-ChildItem -Recurse -File -Name "ninja.exe" | Select-Object -First 10
+            Write-Host "? buildtools directory missing"
           }
 
       # 13. 生成构建配置（GN）
@@ -274,31 +257,25 @@ jobs:
         run: |
           cd engine
           
-          # 尝试找到gn.exe
-          $gnPath = $null
+          # 检查gn.exe是否存在
           if (Test-Path "flutter\buildtools\win\gn.exe") {
-            $gnPath = ".\flutter\buildtools\win\gn.exe"
+            Write-Host "? gn.exe found at flutter\buildtools\win\gn.exe"
+            & ".\flutter\buildtools\win\gn.exe" gen out\host_release --args="target_cpu=\"x64\" is_debug=false is_official_build=true is_component_build=false enable_impeller=true"
           } else {
-            $gnFiles = Get-ChildItem -Recurse -File -Name "gn.exe" | Select-Object -First 1
-            if ($gnFiles) {
-              $gnPath = $gnFiles
-            }
-          }
-          
-          if ($gnPath) {
-            Write-Host "Using gn at: $gnPath"
-            & $gnPath gen out\host_release --args="target_cpu=\"x64\" is_debug=false is_official_build=true is_component_build=false enable_impeller=true"
-          } else {
-            Write-Host "gn.exe not found anywhere in the engine directory"
+            Write-Host "? gn.exe not found"
             Write-Host "??  尝试重新同步以获取buildtools..."
             gclient sync --nohooks --force
             
-            # 再次尝试查找gn.exe
+            # 再次检查gn.exe
             if (Test-Path "flutter\buildtools\win\gn.exe") {
               Write-Host "? 重新同步后找到gn.exe"
               & ".\flutter\buildtools\win\gn.exe" gen out\host_release --args="target_cpu=\"x64\" is_debug=false is_official_build=true is_component_build=false enable_impeller=true"
             } else {
               Write-Host "? 重新同步后仍未找到gn.exe"
+              Write-Host "检查buildtools目录内容:"
+              if (Test-Path "flutter\buildtools") {
+                Get-ChildItem "flutter\buildtools" -Recurse | Select-Object -First 20
+              }
               exit 1
             }
           }
@@ -308,31 +285,25 @@ jobs:
         run: |
           cd engine
           
-          # 尝试找到ninja.exe
-          $ninjaPath = $null
+          # 检查ninja.exe是否存在
           if (Test-Path "flutter\buildtools\win\ninja.exe") {
-            $ninjaPath = ".\flutter\buildtools\win\ninja.exe"
+            Write-Host "? ninja.exe found at flutter\buildtools\win\ninja.exe"
+            & ".\flutter\buildtools\win\ninja.exe" -C out\host_release
           } else {
-            $ninjaFiles = Get-ChildItem -Recurse -File -Name "ninja.exe" | Select-Object -First 1
-            if ($ninjaFiles) {
-              $ninjaPath = $ninjaFiles
-            }
-          }
-          
-          if ($ninjaPath) {
-            Write-Host "Using ninja at: $ninjaPath"
-            & $ninjaPath -C out\host_release
-          } else {
-            Write-Host "ninja.exe not found anywhere in the engine directory"
+            Write-Host "? ninja.exe not found"
             Write-Host "??  尝试重新同步以获取buildtools..."
             gclient sync --nohooks --force
             
-            # 再次尝试查找ninja.exe
+            # 再次检查ninja.exe
             if (Test-Path "flutter\buildtools\win\ninja.exe") {
               Write-Host "? 重新同步后找到ninja.exe"
               & ".\flutter\buildtools\win\ninja.exe" -C out\host_release
             } else {
               Write-Host "? 重新同步后仍未找到ninja.exe"
+              Write-Host "检查buildtools目录内容:"
+              if (Test-Path "flutter\buildtools") {
+                Get-ChildItem "flutter\buildtools" -Recurse | Select-Object -First 20
+              }
               exit 1
             }
           }
