@@ -223,12 +223,61 @@ jobs:
               $missingSourceFiles | ForEach-Object { Write-Host "  - $_" }
               Write-Host "这些文件可能在后续构建步骤中生成"
             }
-          } else {
-            Write-Host "? engine目录不存在"
-            exit 1
-          }
+                     } else {
+             Write-Host "? engine目录不存在"
+             exit 1
+           }
 
-      # 12. 检查目录结构
+       # 11.7. 下载构建工具
+       - name: Download Build Tools
+         run: |
+           cd engine
+           Write-Host "=== 下载构建工具 ==="
+           
+           # 检查是否需要下载buildtools
+           if (-not (Test-Path "flutter\buildtools\win\gn.exe") -or -not (Test-Path "flutter\buildtools\win\ninja.exe")) {
+             Write-Host "构建工具缺失，开始下载..."
+             
+             # 使用gclient runhooks来下载构建工具
+             gclient runhooks
+             
+             # 如果runhooks失败，尝试手动下载
+             if (-not (Test-Path "flutter\buildtools\win\gn.exe")) {
+               Write-Host "尝试手动下载gn和ninja..."
+               
+               # 创建buildtools目录结构
+               if (-not (Test-Path "flutter\buildtools\win")) {
+                 New-Item -ItemType Directory -Path "flutter\buildtools\win" -Force
+               }
+               
+               # 下载gn.exe
+               Write-Host "下载gn.exe..."
+               $gnUrl = "https://storage.googleapis.com/flutter_infra_release/flutter/engine/gn.exe"
+               Invoke-WebRequest -Uri $gnUrl -OutFile "flutter\buildtools\win\gn.exe"
+               
+               # 下载ninja.exe
+               Write-Host "下载ninja.exe..."
+               $ninjaUrl = "https://storage.googleapis.com/flutter_infra_release/flutter/engine/ninja.exe"
+               Invoke-WebRequest -Uri $ninjaUrl -OutFile "flutter\buildtools\win\ninja.exe"
+             }
+             
+             # 验证下载结果
+             if (Test-Path "flutter\buildtools\win\gn.exe") {
+               Write-Host "? gn.exe 下载成功"
+             } else {
+               Write-Host "? gn.exe 下载失败"
+             }
+             
+             if (Test-Path "flutter\buildtools\win\ninja.exe") {
+               Write-Host "? ninja.exe 下载成功"
+             } else {
+               Write-Host "? ninja.exe 下载失败"
+             }
+           } else {
+             Write-Host "? 构建工具已存在"
+           }
+
+       # 12. 检查目录结构
       - name: Check directory structure
         run: |
           Write-Host "=== Current directory ==="
@@ -252,61 +301,35 @@ jobs:
             Write-Host "? buildtools directory missing"
           }
 
-      # 13. 生成构建配置（GN）
-      - name: Generate GN Build Files
-        run: |
-          cd engine
-          
-          # 检查gn.exe是否存在
-          if (Test-Path "flutter\buildtools\win\gn.exe") {
-            Write-Host "? gn.exe found at flutter\buildtools\win\gn.exe"
-            & ".\flutter\buildtools\win\gn.exe" gen out\host_release --args="target_cpu=\"x64\" is_debug=false is_official_build=true is_component_build=false enable_impeller=true"
-          } else {
-            Write-Host "? gn.exe not found"
-            Write-Host "??  尝试重新同步以获取buildtools..."
-            gclient sync --nohooks --force
-            
-            # 再次检查gn.exe
-            if (Test-Path "flutter\buildtools\win\gn.exe") {
-              Write-Host "? 重新同步后找到gn.exe"
-              & ".\flutter\buildtools\win\gn.exe" gen out\host_release --args="target_cpu=\"x64\" is_debug=false is_official_build=true is_component_build=false enable_impeller=true"
-            } else {
-              Write-Host "? 重新同步后仍未找到gn.exe"
-              Write-Host "检查buildtools目录内容:"
-              if (Test-Path "flutter\buildtools") {
-                Get-ChildItem "flutter\buildtools" -Recurse | Select-Object -First 20
-              }
-              exit 1
-            }
-          }
+             # 13. 生成构建配置（GN）
+       - name: Generate GN Build Files
+         run: |
+           cd engine
+           
+           # 检查gn.exe是否存在
+           if (Test-Path "flutter\buildtools\win\gn.exe") {
+             Write-Host "? gn.exe found at flutter\buildtools\win\gn.exe"
+             & ".\flutter\buildtools\win\gn.exe" gen out\host_release --args="target_cpu=\"x64\" is_debug=false is_official_build=true is_component_build=false enable_impeller=true"
+           } else {
+             Write-Host "? gn.exe not found"
+             Write-Host "请检查前面的下载构建工具步骤"
+             exit 1
+           }
 
-      # 14. 编译 Flutter Windows 引擎
-      - name: Build Flutter Windows Engine
-        run: |
-          cd engine
-          
-          # 检查ninja.exe是否存在
-          if (Test-Path "flutter\buildtools\win\ninja.exe") {
-            Write-Host "? ninja.exe found at flutter\buildtools\win\ninja.exe"
-            & ".\flutter\buildtools\win\ninja.exe" -C out\host_release
-          } else {
-            Write-Host "? ninja.exe not found"
-            Write-Host "??  尝试重新同步以获取buildtools..."
-            gclient sync --nohooks --force
-            
-            # 再次检查ninja.exe
-            if (Test-Path "flutter\buildtools\win\ninja.exe") {
-              Write-Host "? 重新同步后找到ninja.exe"
-              & ".\flutter\buildtools\win\ninja.exe" -C out\host_release
-            } else {
-              Write-Host "? 重新同步后仍未找到ninja.exe"
-              Write-Host "检查buildtools目录内容:"
-              if (Test-Path "flutter\buildtools") {
-                Get-ChildItem "flutter\buildtools" -Recurse | Select-Object -First 20
-              }
-              exit 1
-            }
-          }
+             # 14. 编译 Flutter Windows 引擎
+       - name: Build Flutter Windows Engine
+         run: |
+           cd engine
+           
+           # 检查ninja.exe是否存在
+           if (Test-Path "flutter\buildtools\win\ninja.exe") {
+             Write-Host "? ninja.exe found at flutter\buildtools\win\ninja.exe"
+             & ".\flutter\buildtools\win\ninja.exe" -C out\host_release
+           } else {
+             Write-Host "? ninja.exe not found"
+             Write-Host "请检查前面的下载构建工具步骤"
+             exit 1
+           }
 
       # 15. 上传构建产物（flutter_engine.dll, lib, pdb）
       - name: Upload Artifacts
