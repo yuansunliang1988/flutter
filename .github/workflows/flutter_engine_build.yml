@@ -70,16 +70,16 @@ jobs:
         with:
           channel: 'stable'
 
-             # 10. 配置 Git 全局设置
-       - name: Configure Git
-         run: |
-           git config --global core.autocrlf false
-           git config --global core.filemode false
-           git config --global core.fscache true
-           git config --global core.preloadindex true
-           
-               # 10.5. 验证代码完整性
-        - name: Verify Code Integrity
+      # 10. 配置 Git 全局设置
+      - name: Configure Git
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.filemode false
+          git config --global core.fscache true
+          git config --global core.preloadindex true
+          
+      # 10.5. 验证代码完整性
+      - name: Verify Code Integrity
           run: |
             Write-Host "=== 验证代码完整性 ==="
             
@@ -137,14 +137,14 @@ jobs:
           gclient config https://github.com/flutter/flutter.git
           gclient sync --nohooks
           
-             # 11.5. 强制同步（确保buildtools下载）
-       - name: Force Sync Buildtools
-         run: |
-           cd engine
-           gclient sync --nohooks --force
-           
-               # 11.6. 验证同步结果
-        - name: Verify Sync Results
+      # 11.5. 强制同步（确保buildtools下载）
+      - name: Force Sync Buildtools
+        run: |
+          cd engine
+          gclient sync --nohooks --force
+          
+      # 11.6. 验证同步结果
+      - name: Verify Sync Results
           run: |
             cd engine
             Write-Host "=== 验证同步结果 ==="
@@ -241,23 +241,23 @@ jobs:
             }
           }
           
-                     if ($gnPath) {
-             Write-Host "Using gn at: $gnPath"
-             & $gnPath gen out\host_release --args="target_cpu=\"x64\" is_debug=false is_official_build=true is_component_build=false enable_impeller=true"
-           } else {
-             Write-Host "gn.exe not found anywhere in the engine directory"
-             Write-Host "??  尝试重新同步以获取buildtools..."
-             gclient sync --nohooks --force
-             
-             # 再次尝试查找gn.exe
-             if (Test-Path "flutter\buildtools\win\gn.exe") {
-               Write-Host "? 重新同步后找到gn.exe"
-               & ".\flutter\buildtools\win\gn.exe" gen out\host_release --args="target_cpu=\"x64\" is_debug=false is_official_build=true is_component_build=false enable_impeller=true"
-             } else {
-               Write-Host "? 重新同步后仍未找到gn.exe"
-               exit 1
-             }
-           }
+          if ($gnPath) {
+            Write-Host "Using gn at: $gnPath"
+            & $gnPath gen out\host_release --args="target_cpu=\"x64\" is_debug=false is_official_build=true is_component_build=false enable_impeller=true"
+          } else {
+            Write-Host "gn.exe not found anywhere in the engine directory"
+            Write-Host "??  尝试重新同步以获取buildtools..."
+            gclient sync --nohooks --force
+            
+            # 再次尝试查找gn.exe
+            if (Test-Path "flutter\buildtools\win\gn.exe") {
+              Write-Host "? 重新同步后找到gn.exe"
+              & ".\flutter\buildtools\win\gn.exe" gen out\host_release --args="target_cpu=\"x64\" is_debug=false is_official_build=true is_component_build=false enable_impeller=true"
+            } else {
+              Write-Host "? 重新同步后仍未找到gn.exe"
+              exit 1
+            }
+          }
 
       # 14. 编译 Flutter Windows 引擎
       - name: Build Flutter Windows Engine
@@ -275,23 +275,23 @@ jobs:
             }
           }
           
-                     if ($ninjaPath) {
-             Write-Host "Using ninja at: $ninjaPath"
-             & $ninjaPath -C out\host_release
-           } else {
-             Write-Host "ninja.exe not found anywhere in the engine directory"
-             Write-Host "??  尝试重新同步以获取buildtools..."
-             gclient sync --nohooks --force
-             
-             # 再次尝试查找ninja.exe
-             if (Test-Path "flutter\buildtools\win\ninja.exe") {
-               Write-Host "? 重新同步后找到ninja.exe"
-               & ".\flutter\buildtools\win\ninja.exe" -C out\host_release
-             } else {
-               Write-Host "? 重新同步后仍未找到ninja.exe"
-               exit 1
-             }
-           }
+          if ($ninjaPath) {
+            Write-Host "Using ninja at: $ninjaPath"
+            & $ninjaPath -C out\host_release
+          } else {
+            Write-Host "ninja.exe not found anywhere in the engine directory"
+            Write-Host "??  尝试重新同步以获取buildtools..."
+            gclient sync --nohooks --force
+            
+            # 再次尝试查找ninja.exe
+            if (Test-Path "flutter\buildtools\win\ninja.exe") {
+              Write-Host "? 重新同步后找到ninja.exe"
+              & ".\flutter\buildtools\win\ninja.exe" -C out\host_release
+            } else {
+              Write-Host "? 重新同步后仍未找到ninja.exe"
+              exit 1
+            }
+          }
 
       # 15. 上传构建产物（flutter_engine.dll, lib, pdb）
       - name: Upload Artifacts
