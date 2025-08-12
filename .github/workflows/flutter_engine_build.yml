@@ -1,0 +1,80 @@
+name: Build Flutter Windows Engine
+
+on:
+  push:
+    branches:
+      - main  # 触发构建的分支
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest  # 使用 GitHub 提供的 Windows 环境
+
+    steps:
+      # 1. 检出代码
+      - name: Checkout Flutter
+        uses: actions/checkout@v4
+        with:
+          submodules: true  # 确保子模块也被拉取
+
+      # 2. 安装 Python 3.x（如果未预装）
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      # 3. 安装 depot_tools（Flutter 构建依赖）
+      - name: Install depot_tools
+        run: |
+          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+          $env:PATH = "$env:PATH;$(Get-Location)\depot_tools"
+
+      # 4. 安装 Visual Studio Build Tools（仅需一次）
+      - name: Install Visual Studio Build Tools
+        run: |
+          choco install -y visualstudio-build-tools
+          choco install -y windows-sdk
+          choco install -y windows-atl-sdk
+
+      # 5. 安装 Flutter 依赖（如 Dart SDK）
+      - name: Install Flutter Dependencies
+        run: |
+          # 安装 Dart SDK
+          curl -L https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/x64/dart-sdk.zip -o dart-sdk.zip
+          Expand-Archive dart-sdk.zip dart-sdk
+          $env:PATH = "$env:PATH;$(Get-Location)\dart-sdk\bin"
+
+      # 6. 配置 Git 全局设置
+      - name: Configure Git
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.filemode false
+          git config --global core.fscache true
+          git config --global core.preloadindex true
+
+      # 7. 同步 Flutter 引擎代码
+      - name: Sync Flutter Engine
+        run: |
+          cd flutter
+          gclient sync --nohooks
+
+      # 8. 生成构建配置（GN）
+      - name: Generate GN Build Files
+        run: |
+          cd flutter
+          gn gen out/host_debug --args="target_cpu=\"x64\" is_debug=true"
+
+      # 9. 编译 Flutter Windows 引擎
+      - name: Build Flutter Windows Engine
+        run: |
+          cd flutter
+          ninja -C out/host_debug
+
+      # 10. 上传构建产物（flutter_windows.dll）
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter_engine_windows
+          path: flutter/out/host_debug/flutter_engine.dll
