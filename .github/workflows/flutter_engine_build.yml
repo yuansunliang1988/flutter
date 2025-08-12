@@ -58,21 +58,25 @@ jobs:
       # 8. 同步 Flutter 引擎代码
       - name: Sync Flutter Engine
         run: |
+          cd engine
           gclient sync --nohooks
 
       # 9. 生成构建配置（GN）
       - name: Generate GN Build Files
         run: |
-          gn gen out/host_debug --args="target_cpu=\"x64\" is_debug=true"
+          gn gen out/host_release --args="target_cpu=\"x64\" is_debug=false is_official_build=true"
 
       # 10. 编译 Flutter Windows 引擎
       - name: Build Flutter Windows Engine
         run: |
-          ninja -C out/host_debug
+          ninja -C out/host_release
 
-      # 11. 上传构建产物（flutter_windows.dll）
+      # 11. 上传构建产物（flutter_engine.dll, lib, pdb）
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: flutter_engine_windows
-          path: out/host_debug/flutter_engine.dll
+          name: flutter_engine_windows_release
+          path: |
+            out/host_release/flutter_engine.dll
+            out/host_release/flutter_engine.lib
+            out/host_release/flutter_engine.pdb
