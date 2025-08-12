@@ -91,23 +91,23 @@ jobs:
         run: |
           cd engine
           Get-ChildItem
-          if (Test-Path "buildtools") { 
-            Write-Host "buildtools directory exists:"
-            Get-ChildItem buildtools
+          if (Test-Path "flutter\buildtools") { 
+            Write-Host "flutter\buildtools directory exists:"
+            Get-ChildItem flutter\buildtools
           }
-          if (Test-Path "buildtools\win") { 
-            Write-Host "buildtools\win directory exists:"
-            Get-ChildItem buildtools\win
+          if (Test-Path "flutter\buildtools\win") { 
+            Write-Host "flutter\buildtools\win directory exists:"
+            Get-ChildItem flutter\buildtools\win
           }
 
       # 13. 生成构建配置（GN）
       - name: Generate GN Build Files
         run: |
           cd engine
-          if (Test-Path "buildtools\win\gn.exe") {
-            .\buildtools\win\gn.exe gen out\host_release --args="target_cpu=\"x64\" is_debug=false is_official_build=true is_component_build=false enable_impeller=true"
+          if (Test-Path "flutter\buildtools\win\gn.exe") {
+            .\flutter\buildtools\win\gn.exe gen out\host_release --args="target_cpu=\"x64\" is_debug=false is_official_build=true is_component_build=false enable_impeller=true"
           } else {
-            Write-Host "gn.exe not found in buildtools\win\"
+            Write-Host "gn.exe not found in flutter\buildtools\win\"
             Write-Host "Trying to find gn.exe..."
             Get-ChildItem -Recurse -Name "gn.exe" | Select-Object -First 5
             exit 1
@@ -117,10 +117,10 @@ jobs:
       - name: Build Flutter Windows Engine
         run: |
           cd engine
-          if (Test-Path "buildtools\win\ninja.exe") {
-            .\buildtools\win\ninja.exe -C out\host_release
+          if (Test-Path "flutter\buildtools\win\ninja.exe") {
+            .\flutter\buildtools\win\ninja.exe -C out\host_release
           } else {
-            Write-Host "ninja.exe not found in buildtools\win\"
+            Write-Host "ninja.exe not found in flutter\buildtools\win\"
             Write-Host "Trying to find ninja.exe..."
             Get-ChildItem -Recurse -Name "ninja.exe" | Select-Object -First 5
             exit 1
