@@ -31,12 +31,9 @@ jobs:
           git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
           $env:PATH = "$env:PATH;$(Get-Location)\depot_tools"
 
-      # 4. 安装 Visual Studio Build Tools（仅需一次）
-      - name: Install Visual Studio Build Tools
-        run: |
-          choco install -y visualstudio-build-tools
-          choco install -y windows-sdk
-          choco install -y windows-atl-sdk
+      # 4. 使用 GitHub Actions 预装的 Visual Studio（推荐）
+      - name: Setup Visual Studio
+        uses: microsoft/setup-msbuild@v1.1
 
       # 5. 安装 Flutter 依赖（如 Dart SDK）
       - name: Install Flutter Dependencies
@@ -57,19 +54,16 @@ jobs:
       # 7. 同步 Flutter 引擎代码
       - name: Sync Flutter Engine
         run: |
-          cd flutter
           gclient sync --nohooks
 
       # 8. 生成构建配置（GN）
       - name: Generate GN Build Files
         run: |
-          cd flutter
           gn gen out/host_debug --args="target_cpu=\"x64\" is_debug=true"
 
       # 9. 编译 Flutter Windows 引擎
       - name: Build Flutter Windows Engine
         run: |
-          cd flutter
           ninja -C out/host_debug
 
       # 10. 上传构建产物（flutter_windows.dll）
@@ -77,4 +71,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: flutter_engine_windows
-          path: flutter/out/host_debug/flutter_engine.dll
+          path: out/host_debug/flutter_engine.dll
