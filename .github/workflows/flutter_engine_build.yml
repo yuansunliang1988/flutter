@@ -66,13 +66,13 @@ jobs:
       - name: Generate GN Build Files
         run: |
           cd engine
-          gn gen out/host_release --args="target_cpu=\"x64\" is_debug=false is_official_build=true is_component_build=false enable_impeller=true"
+          buildtools/win/gn.exe gen out/host_release --args="target_cpu=\"x64\" is_debug=false is_official_build=true is_component_build=false enable_impeller=true"
 
       # 10. 编译 Flutter Windows 引擎
       - name: Build Flutter Windows Engine
         run: |
           cd engine
-          ninja -C out/host_release
+          buildtools/win/ninja.exe -C out/host_release
 
       # 11. 上传构建产物（flutter_engine.dll, lib, pdb）
       - name: Upload Artifacts
