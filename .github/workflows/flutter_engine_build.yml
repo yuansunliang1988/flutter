@@ -90,9 +90,15 @@ jobs:
       - name: Check directory structure
         run: |
           cd engine
-          ls -la
-          if (Test-Path "buildtools") { ls -la buildtools }
-          if (Test-Path "buildtools\win") { ls -la buildtools\win }
+          Get-ChildItem
+          if (Test-Path "buildtools") { 
+            Write-Host "buildtools directory exists:"
+            Get-ChildItem buildtools
+          }
+          if (Test-Path "buildtools\win") { 
+            Write-Host "buildtools\win directory exists:"
+            Get-ChildItem buildtools\win
+          }
 
       # 13. 生成构建配置（GN）
       - name: Generate GN Build Files
