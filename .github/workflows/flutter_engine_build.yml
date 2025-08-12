@@ -65,11 +65,13 @@ jobs:
       # 9. 生成构建配置（GN）
       - name: Generate GN Build Files
         run: |
+          cd engine
           gn gen out/host_release --args="target_cpu=\"x64\" is_debug=false is_official_build=true is_component_build=false enable_impeller=true"
 
       # 10. 编译 Flutter Windows 引擎
       - name: Build Flutter Windows Engine
         run: |
+          cd engine
           ninja -C out/host_release
 
       # 11. 上传构建产物（flutter_engine.dll, lib, pdb）
@@ -78,6 +80,6 @@ jobs:
         with:
           name: flutter_engine_windows_release
           path: |
-            out/host_release/flutter_engine.dll
-            out/host_release/flutter_engine.lib
-            out/host_release/flutter_engine.pdb
+            engine/out/host_release/flutter_engine.dll
+            engine/out/host_release/flutter_engine.lib
+            engine/out/host_release/flutter_engine.pdb
