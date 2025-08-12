@@ -80,7 +80,7 @@ jobs:
           
       # 10.5. 验证代码完整性
       - name: Verify Code Integrity
-          run: |
+        run: |
             Write-Host "=== 验证代码完整性 ==="
             
             # 检查当前提交
@@ -145,7 +145,7 @@ jobs:
           
       # 11.6. 验证同步结果
       - name: Verify Sync Results
-          run: |
+        run: |
             cd engine
             Write-Host "=== 验证同步结果 ==="
             
