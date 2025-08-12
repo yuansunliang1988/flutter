@@ -140,14 +140,23 @@ jobs:
       # 11.5. 强制同步（确保buildtools下载）
       - name: Force Sync Buildtools
         run: |
-          cd engine
-          gclient sync --nohooks --force
+          if (Test-Path "engine") {
+            cd engine
+            gclient sync --nohooks --force
+          } else {
+            Write-Host "? engine目录不存在"
+            exit 1
+          }
           
       # 11.6. 验证同步结果
       - name: Verify Sync Results
         run: |
+          Write-Host "=== 验证同步结果 ==="
+          
+          # 检查engine目录
+          if (Test-Path "engine") {
             cd engine
-            Write-Host "=== 验证同步结果 ==="
+            Write-Host "? engine目录存在，已切换到engine目录"
             
             # 检查.gclient_entries文件
             if (Test-Path ".gclient_entries") {
@@ -201,19 +210,24 @@ jobs:
               $missingSourceFiles | ForEach-Object { Write-Host "  - $_" }
               Write-Host "这些文件可能在后续构建步骤中生成"
             }
+          } else {
+            Write-Host "? engine目录不存在"
+            exit 1
+          }
 
       # 12. 检查目录结构
       - name: Check directory structure
         run: |
-          cd engine
-          Write-Host "=== Engine directory contents ==="
+          Write-Host "=== Current directory ==="
+          Get-Location
           Get-ChildItem
           
-          Write-Host "=== Flutter directory contents ==="
-          if (Test-Path "flutter") {
-            Get-ChildItem flutter
+          Write-Host "=== Engine directory contents ==="
+          if (Test-Path "engine") {
+            cd engine
+            Get-ChildItem
           } else {
-            Write-Host "flutter directory not found"
+            Write-Host "engine directory not found"
           }
           
           Write-Host "=== Search for buildtools ==="
